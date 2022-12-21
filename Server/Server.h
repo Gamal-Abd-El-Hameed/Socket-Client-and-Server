@@ -10,6 +10,9 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <fstream>
+#include <sstream>
+#include <unistd.h>
 typedef unsigned long long ull;
 using namespace  std;
 
@@ -27,6 +30,10 @@ public:
     static void *serveRequest(ull soc);
     static bool socketIsClosed(ull soc);
     static vector<string> splitRequest(string str, string token);
+    static void getRequest(string req, int soc);
+    static void postRequest(vector<string> req, int soc);
+    static int getLen(string s);
+
 
 private:
     int N = 10;

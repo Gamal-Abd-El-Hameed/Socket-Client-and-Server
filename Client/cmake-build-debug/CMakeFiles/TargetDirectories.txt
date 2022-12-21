@@ -1,3 +1,0 @@
-F:/Semester/Net/Assignments/1/test/Client/cmake-build-debug/CMakeFiles/Client.dir
-F:/Semester/Net/Assignments/1/test/Client/cmake-build-debug/CMakeFiles/edit_cache.dir
-F:/Semester/Net/Assignments/1/test/Client/cmake-build-debug/CMakeFiles/rebuild_cache.dir

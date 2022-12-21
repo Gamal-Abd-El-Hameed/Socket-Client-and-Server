@@ -10,121 +10,70 @@
 #include "Server.h"
 
 void Server::init_server(int port) {
-    if (WSAStartup(MAKEWORD(2, 2), &ws) < 0)
-        cout<<"WSA Failed\n";
-    else
-        cout<<"WSA Success\n";
-    // initialize the socket
-    nSocket = socket(AF_INET/*IPv4*/, SOCK_STREAM/*for tcp connection*/, 0);
-    if (nSocket < 0) {
-        cout<<"Failed to create socket\n";
+    //Initiate the Socket environment
+    WSADATA w;
+    int nRet = 0;
+
+    sockaddr_in srv;
+
+    nRet = WSAStartup(MAKEWORD(2, 2), &w);
+    if (nRet < 0)
+    {
+        printf("\nCannot Initialize socket lib");
         WSACleanup();
         exit(EXIT_FAILURE);
     }
-    else {
-        cout<<"Socket created successfully\n";
+    //Open a socket - listener
+    int nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (nSocket < 0)
+    {
+        //errno is a system global variable which gets updated
+        //with the last API call return value/result.
+        printf("\nCannot Initialize listener socket:%d", errno);;
+        WSACleanup();
+        exit(EXIT_FAILURE);
     }
 
-    // initialize the environment for sockadde structure
     srv.sin_family = AF_INET;
-    srv.sin_port = htons(port);
     srv.sin_addr.s_addr = INADDR_ANY;
+    srv.sin_port = htons(port);
     memset(&(srv.sin_zero), 0, 8);
-    // Bind the socket to the local port
-    ull nRet = bind(nSocket, (sockaddr*)&srv, sizeof(sockaddr));
-    if (nRet < 0) {
-        cout<<"Failed to bind the socket\n";
-        WSACleanup();
-        exit(EXIT_FAILURE);
-    }
-    else {
-        cout<<"Bind socket successfully\n";
-    }
-    // Listen the request from client (queues the requests)
-    nRet = listen(nSocket, N); // backlog if more than N requests are incoming they should wait
-    if(nRet < 0) {
-        cout<<"Failed to listen\n";
-        WSACleanup();
-        closesocket(nSocket);
-        exit(EXIT_FAILURE);
-    }
-    else {
-        cout<<"Listen successfully\n";
-    }
-    nMaxFd = nSocket;
-    struct timeval tv{};
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-    while (true) {
-        FD_ZERO(&fr);
-        FD_ZERO(&fw);
-        FD_ZERO(&fe);
-        FD_SET(nSocket, &fr);
-        FD_SET(nSocket, &fe);
-        // for more connections
-        for (int i = clientIndex; i < MAX_CLIENTS; i++) {
-            if (clients[i] != 0) {
-                FD_SET(clients[i], &fr);
-                FD_SET(clients[i], &fe);
-            }
-        }
-        cout<<"Before call: "<<fr.fd_count<<endl;
-        // Keep waiting for new request and processed it as prev requests
-        nRet = select(nMaxFd+1, &fr, &fw, &fe, &tv);
-        if (nRet > 0) {
-            // when someone connects or communicate with a msg over
-            // a dedicated connection
-            cout << "Data on port ....... Processing now ....\n";
-            //process the request
-            Server::sendMessage();
 
-            break;
-        }
-        else if (nRet == 0) {
-            // No connection or any communication request made or you say
-            // that none of the socket  descriptors are ready
-            cout<<"Nothing on port: "<<port<<endl;
-        }
-        else {
-            // fail and your app should show some useful msg
-            cout<<"Failed\n";
+    nRet = bind(nSocket, (struct sockaddr*)&srv, sizeof(srv));
+    if (nRet < 0)
+    {
+        printf("\nCannot bind at port:%d", errno);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    nRet = listen(nSocket, 5);
+    if (nRet < 0)
+    {
+        printf("\nCannot listen at port:%d", errno);
+        WSACleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    while(true) {
+        int nClient = 0;
+        int addrlen = sizeof(srv);
+        cout<<"\nWaiting to accept connection";
+        nClient = accept(nSocket, (struct sockaddr*)&srv, &addrlen);
+        if (nClient < 0)
+        {
+            printf("\nCannot accept client at port:%d", errno);
             WSACleanup();
             exit(EXIT_FAILURE);
         }
-        cout<<"After call: "<<fr.fd_count<<"\n\n\n";
-        Sleep(2000);
-    }
-}
-
-void Server::sendMessage() {
-    if (FD_ISSET(nSocket, &fr)) {
-        int t = sizeof(struct sockaddr);
-        ull connectionSocket = accept(nSocket, (struct sockaddr *) &srv, &t);
-        if (connectionSocket < 0) {
-            cout<<"Failed to accept connection\n";
-            exit(EXIT_FAILURE);
+        else {
+            cout<<"\nConnection accepted";
         }
-        else if (connectionSocket > 0){
-            cout<<"Accept connection\n";
-            thread th(serveRequest, connectionSocket);
-//            if (clientIndex == MAX_CLIENTS) {
-//                cout<<"No more clients\n";
-//            }
-//            clients[clientIndex++] = connectionSocket;
-//            send(connectionSocket, "Got it\n", 6, 0);
-//            exit(EXIT_FAILURE);
-        }
-
+        thread t(serveRequest, nClient);
+        if (t.joinable())
+            t.join();
     }
-    else {
-        for (int i = 0; i < MAX_CLIENTS; ++i) {
-            if (FD_ISSET(clients[i], &fr)) {
-                // got the new msg from the client
-                // just rcv new msg
-                // just queue that for new works of your server to fulfill the request
-            }
-        }
-    }
+    closesocket(nSocket);
 }
 
 void *Server::serveRequest(ull soc) {
@@ -148,9 +97,9 @@ void *Server::serveRequest(ull soc) {
                 cout << "serving request \n";
                 vector<string> request_t = splitRequest(all_requests[i], "\r\n");
                 if (all_requests[i].find("POST") != std::string::npos) {
-//                    post_request(request_t, soc);
+                    postRequest(request_t, soc);
                 } else if (all_requests[i].find("GET") != std::string::npos) {
-//                    get_request(request_t[0], soc);
+                    getRequest(request_t[0], soc);
                 }
             }
         }
@@ -194,82 +143,86 @@ vector<string> Server::splitRequest(string str, string token) {
     return result;
 }
 
+void Server::getRequest(string req, int soc) {
+    cout << "Handling get request -->" << req << endl;
+    vector<string> fname = splitRequest(req, " ");
+    string fpath = "pwd/Server/ServerFiles/" + fname[1];
 
+    string response;
 
-/////////////////////////////////////////////////////
-// SocketServer.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+    ifstream file(fpath.c_str(), ifstream::ate | ifstream::binary);
+    if (!file.is_open()) {
+        cout << "error in file, 404\n";
+        response = "HTTP/1.1 404 Not Found\r\n";
+        write(soc, (char *) response.c_str(), response.size());
+        return;
+    } else {
+        response = "HTTP/1.1 200 OK\r\n";
 
-#include <stdio.h>
-#include <winsock.h>
+        long len = file.tellg();
+        char *buffer = new char[len];
+        memset(buffer, '\0', sizeof(buffer));
 
-#define PORT 19999
+        response += ("Content-Length: " + to_string(len - 1) + "\r\n\r\n");
+        write(soc, (char *) response.c_str(), response.size());
 
-int main()
-{
-    //Initiate the Socket environment
-    WSADATA w;
-    int nRet = 0;
-
-    sockaddr_in srv;
-
-    nRet = WSAStartup(MAKEWORD(2, 2), &w);
-    if (nRet < 0)
-    {
-        printf("\nCannot Initialize socket lib");
-        return -1;
-    }
-    //Open a socket - listener
-    int nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (nSocket < 0)
-    {
-        //errno is a system global variable which gets updated
-        //with the last API call return value/result.
-        printf("\nCannot Initialize listener socket:%d", errno);;
-        return -1;
-    }
-
-    srv.sin_family = AF_INET;
-    srv.sin_addr.s_addr = INADDR_ANY;
-    srv.sin_port = htons(PORT);
-    memset(&(srv.sin_zero), 0, 8);
-
-    nRet = bind(nSocket, (struct sockaddr*)&srv, sizeof(srv));
-    if (nRet < 0)
-    {
-        printf("\nCannot bind at port:%d", errno);
-        return -1;
-    }
-
-    nRet = listen(nSocket, 5);
-    if (nRet < 0)
-    {
-        printf("\nCannot listen at port:%d", errno);
-        return -1;
-    }
-
-    int nClient = 0;
-    int addrlen = sizeof(srv);
-    nClient = accept(nSocket, (struct sockaddr*)&srv, &addrlen);
-
-    if (nRet < 0)
-    {
-        printf("\nCannot accept client at port:%d", errno);
-        return -1;
-    }
-
-    char sBuff[1024] = { 0, };
-
-    while (1)
-    {
-        memset(sBuff, 0, 1024);
-        nRet = recv(nClient, sBuff, 1024, 0);
-        if (nRet < 0)
-        {
-            printf("\nCannot recv message:%d", errno);
-            return -1;
+        file.seekg(0, ios::beg);
+        file.read(buffer, len);
+        file.close();
+        cout << "file opened & read successfully";
+        while (len > 0) {
+            int length_sent = write(soc, buffer, len);
+            if (length_sent <= 0) {
+                break;
+            }
+            buffer += length_sent;
+            len -= length_sent;
         }
-        printf("\nRecieved message from client:\n%s",
-            sBuff);
+        cout << "file sent successfully";
     }
+}
+
+
+void Server::postRequest(vector<string> req, int soc) {
+    cout << "Handling post request"<< endl;
+    string response = "HTTP/1.1 200 OK\r\n\r\n";
+    write(soc, (char *) response.c_str(), response.size());
+
+    vector<string> fname = splitRequest(req[0], " ");
+    std::ofstream file("pwd/Server/ServerFiles/" + fname[1], ios::out | ios::binary);
+
+    if (!file.is_open()) {
+        cout << "error in file\n";
+    }
+    int len = getLen(req[1]);
+    char *buffer = new char[len];
+    memset(buffer, '\0', sizeof(buffer));
+
+    while (len > 0) {
+        int length_get = read(soc, buffer, len - 1);
+        if (length_get >= len - 1 || length_get <= 0) {
+            break;
+        }
+        buffer += length_get;
+        len -= length_get;
+    }
+    file.write(buffer, strlen(buffer));
+    file.close();
+    cout << "file got successfully\n";
+    cout << "file content: " << buffer << endl;
+}
+
+int Server::getLen(string s) {
+    stringstream ss;
+    ss << s;
+    string temp;
+    int found;
+    while (!ss.eof()) {
+        ss >> temp;
+        if (stringstream(temp) >> found){
+            return found;
+        }
+        temp = "";
+    }
+    return 0;
 }

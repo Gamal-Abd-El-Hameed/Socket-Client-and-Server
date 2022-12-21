@@ -1,4 +1,6 @@
-"C:\Program Files\JetBrains\CLion 2022.1.3\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=C:/Program Files/JetBrains/CLion 2022.1.3/bin/ninja/win/ninja.exe" -G Ninja -S F:\Semester\Net\Assignments\1\test\Client -B F:\Semester\Net\Assignments\1\test\Client\cmake-build-debug
--- Configuring done
--- Generating done
--- Build files have been written to: F:/Semester/Net/Assignments/1/test/Client/cmake-build-debug
+"C:\Program Files\JetBrains\CLion 2022.1.3\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - MinGW Makefiles" -S "E:\College\Level 3\Term 1\Networks\Socket-Client-and-Server\Client" -B "E:\College\Level 3\Term 1\Networks\Socket-Client-and-Server\Client\cmake-build-debug"
+CMake Error at CMakeLists.txt:1 (cmake_minimum_required):
+  CMake 3.23 or higher is required.  You are running version 3.22.3
+
+
+-- Configuring incomplete, errors occurred!
