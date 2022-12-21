@@ -4,19 +4,33 @@
 
 #ifndef SERVER_SERVER_H
 #define SERVER_SERVER_H
-
-
+#define MAX_CLIENTS 50
+#define BUFFER_SIZE 100000
 #include <winsock.h>
 #include <iostream>
+#include <vector>
+#include <thread>
 typedef unsigned long long ull;
 using namespace  std;
 
 class Server {
 public:
-    void init_server(int port) const;
+    int clients[MAX_CLIENTS];
+    int clientIndex = 0;
+    fd_set fr, fw, fe;
+    struct  sockaddr_in srv{};
+    ull nMaxFd;
+    WSADATA  ws;
+    ull nSocket;
+    void init_server(int port);
+    void sendMessage();
+    static void *serveRequest(ull soc);
+    static bool socketIsClosed(ull soc);
+    static vector<string> splitRequest(string str, string token);
 
 private:
     int N = 10;
+
 };
 
 
